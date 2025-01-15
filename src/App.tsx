@@ -1,37 +1,66 @@
+import {
+  signInWithRedirect,
+  signOut,
+  getCurrentUser,
+  GetCurrentUserOutput,
+} from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 import { useEffect, useState } from "react";
-import type { Schema } from "../amplify/data/resource";
-import { generateClient } from "aws-amplify/data";
-
-const client = generateClient<Schema>();
 
 function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [user, setUser] = useState<GetCurrentUserOutput | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [customState, setCustomState] = useState<string | null>(null);
 
   useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
+    const unsubscribe = Hub.listen("auth", ({ payload }) => {
+      switch (payload.event) {
+        case "signInWithRedirect":
+          getUser();
+          break;
+        case "signInWithRedirect_failure":
+          setError("An error has ocurred during the OAuth flow.");
+          break;
+        case "customOAuthState":
+          setCustomState(payload.data); // this is the customState provided on signInWithRedirect function
+          break;
+      }
     });
+
+    getUser();
+
+    return unsubscribe;
   }, []);
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-  }
+  const getUser = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      console.log("Not signed in");
+    }
+  };
+
+  const signIn = async () => {
+    try {
+      signInWithRedirect({
+        // provider: 'COGNITO',
+        customState: "customState",
+      });
+    } catch (error) {
+      console.error("Error signing in:", error);
+    }
+  };
 
   return (
     <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
-      <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
-        ))}
-      </ul>
+      { !user && <button onClick={signIn}>Sign In</button> }
+      {/* global オプションをつけると全てのアプリから強制ログアウト */}
+      { user && <button onClick={() => signOut({ global: true })}>Sign Out</button> }
       <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-          Review next step of this tutorial.
-        </a>
+        <div>{user?.username}</div>
+        <div>{customState}</div>
+        <div>{error}</div>
       </div>
     </main>
   );
