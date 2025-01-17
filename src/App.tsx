@@ -3,12 +3,14 @@ import {
   signOut,
   getCurrentUser,
   GetCurrentUserOutput,
+  fetchAuthSession,
 } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 import { useEffect, useState } from "react";
 
 function App() {
   const [user, setUser] = useState<GetCurrentUserOutput | null>(null);
+  const [groups, setGroups] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [customState, setCustomState] = useState<string | null>(null);
 
@@ -36,6 +38,9 @@ function App() {
     try {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
+      const session = await fetchAuthSession();
+      const groups = session?.tokens?.accessToken?.payload['cognito:groups'] as string[] || [];
+      setGroups(groups);
     } catch (error) {
       console.log("Not signed in");
     }
@@ -44,7 +49,6 @@ function App() {
   const signIn = async () => {
     try {
       signInWithRedirect({
-        // provider: 'COGNITO',
         customState: "customState",
       });
     } catch (error) {
@@ -59,7 +63,8 @@ function App() {
       { user && <button onClick={() => signOut({ global: true })}>Sign Out</button> }
       <div>
         <div>{user?.username}</div>
-        <div>{customState}</div>
+        {customState && <div>Custom State: {customState}</div>}
+        {groups && <div>Groups: {groups.join(", ")}</div>}
         <div>{error}</div>
       </div>
     </main>

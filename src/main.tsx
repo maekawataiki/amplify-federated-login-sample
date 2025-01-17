@@ -6,21 +6,25 @@ import outputs from "../amplify_outputs.json";
 import "./index.css";
 import "@aws-amplify/ui-react/styles.css";
 
+const host = window.location.hostname;
+const url = host.includes("localhost")
+  ? `http://${host}:5173`
+  : `https://${host}`;
+
 Amplify.configure({
   ...outputs,
   // 必要に応じて書き換える
   auth: {
-    aws_region: "<aws region>",
-    user_pool_id: "<user pool id>",
-    user_pool_client_id: "<user pool client id>",
+    aws_region: "us-west-2",
+    user_pool_id: "<user_pool_id>",
+    user_pool_client_id: "<user_pool_client_id>",
     oauth: {
       // Cognito に設定されているドメイン (例: xxxx.auth.us-west-2.amazoncognito.com)
-      domain: "<cognito domain>",
+      domain: "<domain>",
       scopes: ["email", "phone", "openid", "profile"],
-      // URL は Client に指定した URL と完全一致させる
-      // ローカルと本番で切り替えられる実装にすると良い。（window.location.hostname 等。最後の / もあるかどうかは完全一致の必要があるので注意）
-      redirect_sign_in_uri: ["http://localhost:5173"],
-      redirect_sign_out_uri: ["http://localhost:5173"],
+      // URL は Client に指定した URL と完全一致させる (最後の / もあるかどうかは完全一致の必要があるので注意）
+      redirect_sign_in_uri: [url],
+      redirect_sign_out_uri: [url],
       response_type: "code",
       identity_providers: ["COGNITO"],
     },
